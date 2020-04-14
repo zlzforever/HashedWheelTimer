@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HashedWheelTimerSample", "src\HashedWheelTimerSample\HashedWheelTimerSample.csproj", "{8AE4B85F-E2E0-4147-8BBB-C2D3315F889B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HashedWheelTimer", "src\HashedWheelTimer\HashedWheelTimer.csproj", "{0AE0635C-72A5-47A7-AC24-262B6DCF740D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HashedWheelTimerTests", "src\HashedWheelTimerTests\HashedWheelTimerTests.csproj", "{886298C5-D30F-4ECC-89E2-2E2945A9EE10}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{18F105E4-59B2-465C-A174-B8A449455AFF}"
+ProjectSection(SolutionItems) = preProject
+	LICENSE = LICENSE
+	.gitignore = .gitignore
+EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8AE4B85F-E2E0-4147-8BBB-C2D3315F889B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8AE4B85F-E2E0-4147-8BBB-C2D3315F889B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8AE4B85F-E2E0-4147-8BBB-C2D3315F889B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8AE4B85F-E2E0-4147-8BBB-C2D3315F889B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0AE0635C-72A5-47A7-AC24-262B6DCF740D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0AE0635C-72A5-47A7-AC24-262B6DCF740D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0AE0635C-72A5-47A7-AC24-262B6DCF740D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0AE0635C-72A5-47A7-AC24-262B6DCF740D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{886298C5-D30F-4ECC-89E2-2E2945A9EE10}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{886298C5-D30F-4ECC-89E2-2E2945A9EE10}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{886298C5-D30F-4ECC-89E2-2E2945A9EE10}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{886298C5-D30F-4ECC-89E2-2E2945A9EE10}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
