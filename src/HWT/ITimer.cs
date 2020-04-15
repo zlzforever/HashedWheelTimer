@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace HashedWheelTimer
+namespace HWT
 {
     public interface ITimer : IDisposable
     {

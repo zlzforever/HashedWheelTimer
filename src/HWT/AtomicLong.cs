@@ -1,6 +1,6 @@
 using System.Threading;
 
-namespace HashedWheelTimer
+namespace HWT
 {
     public class AtomicLong
     {
@@ -15,5 +15,7 @@ namespace HashedWheelTimer
         {
             return Interlocked.Decrement(ref _value);
         }
+
+        public long Value => Interlocked.Read(ref _value);
     }
 }

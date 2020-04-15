@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace HashedWheelTimer
+namespace HWT
 {
     /// <summary>
     /// A task which is executed after the delay specified with Timer.NewTimeout(TimerTask, long, TimeUnit).

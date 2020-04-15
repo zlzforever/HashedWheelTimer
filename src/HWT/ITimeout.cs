@@ -1,4 +1,4 @@
-namespace HashedWheelTimer
+namespace HWT
 {
     /// <summary>
     /// A handle associated with a TimerTask that is returned by a Timer

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace HashedWheelTimer
+namespace HWT
 {
     public class HashedWheelTimer : ITimer
     {
@@ -18,8 +18,8 @@ namespace HashedWheelTimer
         private readonly HashedWheelBucket[] _wheel;
         private readonly int _mask;
         private readonly ManualResetEvent _startTimeInitialized = new ManualResetEvent(false);
+        private ManualResetEvent _workStopped;
         private readonly ConcurrentQueue<HashedWheelTimeout> _timeouts = new ConcurrentQueue<HashedWheelTimeout>();
-        private ManualResetEvent _cancelWorker;
 
         private readonly ConcurrentQueue<HashedWheelTimeout> _cancelledTimeouts =
             new ConcurrentQueue<HashedWheelTimeout>();
@@ -27,13 +27,13 @@ namespace HashedWheelTimer
         private readonly ISet<ITimeout> _unprocessedTimeouts = new HashSet<ITimeout>();
         private readonly AtomicLong _pendingTimeouts = new AtomicLong();
         private readonly long _maxPendingTimeouts;
-        private Task _work;
         private int _workerStarted;
         private CancellationTokenSource _cancellationTokenSource;
-        private CancellationToken _cancellationToken;
         private long _tick;
 
         public long StartTime { get; private set; }
+
+        public long PendingTimeouts => _pendingTimeouts.Value;
 
         internal void EnqueueCanceledTimeout(HashedWheelTimeout timeout)
         {
@@ -45,13 +45,13 @@ namespace HashedWheelTimer
             _pendingTimeouts.DecrementAndGet();
         }
 
-        public HashedWheelTimer() : this(NullLogger<HashedWheelTimer>.Instance, TimeSpan.FromMilliseconds(100))
+        public HashedWheelTimer() : this(null, TimeSpan.FromMilliseconds(100))
         {
         }
 
         public HashedWheelTimer(TimeSpan span,
             int ticksPerWheel = 512,
-            long maxPendingTimeouts = 0) : this(NullLogger<HashedWheelTimer>.Instance, span, ticksPerWheel,
+            long maxPendingTimeouts = 0) : this(null, span, ticksPerWheel,
             maxPendingTimeouts)
         {
         }
@@ -138,9 +138,9 @@ namespace HashedWheelTimer
                 throw new ArgumentNullException(nameof(task));
             }
 
-            if (_cancellationToken != null && _cancellationToken.IsCancellationRequested)
+            if (_cancellationTokenSource != default && _cancellationTokenSource.Token.IsCancellationRequested)
             {
-                throw new ApplicationException("cannot be started once stopped");
+                throw new InvalidOperationException("cannot be started once stopped");
             }
 
             var pendingTimeoutsCount = _pendingTimeouts.IncrementAndGet();
@@ -170,7 +170,7 @@ namespace HashedWheelTimer
 
         public IEnumerable<ITimeout> Stop()
         {
-            if (_work.Status == TaskStatus.Faulted || _work.Status == TaskStatus.Canceled)
+            if (_cancellationTokenSource == null || _cancellationTokenSource.Token.IsCancellationRequested)
             {
                 return Enumerable.Empty<ITimeout>();
             }
@@ -178,7 +178,7 @@ namespace HashedWheelTimer
             try
             {
                 _cancellationTokenSource.Cancel();
-                _cancelWorker.WaitOne();
+                _workStopped.WaitOne();
             }
             finally
             {
@@ -190,7 +190,6 @@ namespace HashedWheelTimer
 
         public void Dispose()
         {
-            _work?.Dispose();
             _instanceCounter.DecrementAndGet();
         }
 
@@ -204,9 +203,8 @@ namespace HashedWheelTimer
             if (workerStarted == 0)
             {
                 _cancellationTokenSource = new CancellationTokenSource();
-                _cancellationToken = _cancellationTokenSource.Token;
-                _cancelWorker = new ManualResetEvent(false);
-                _work = Task.Factory.StartNew(async state =>
+                _workStopped = new ManualResetEvent(false);
+                Task.Factory.StartNew(async state =>
                 {
                     var cancellationToken = (CancellationToken) state;
                     StartTime = DateTimeHelper.TotalMilliseconds;
@@ -254,8 +252,9 @@ namespace HashedWheelTimer
 
                     ProcessCancelledTasks();
 
-                    _cancelWorker.Set();
-                }, _cancellationToken, TaskCreationOptions.LongRunning);
+                    // Notify the other threads work is stopped.
+                    _workStopped.Set();
+                }, _cancellationTokenSource.Token, TaskCreationOptions.LongRunning);
             }
 
             // Wait until the startTime is initialized by the worker.

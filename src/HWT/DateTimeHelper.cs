@@ -1,6 +1,6 @@
 using System;
 
-namespace HashedWheelTimer
+namespace HWT
 {
     public static class DateTimeHelper
     {

@@ -5,10 +5,8 @@
         <TargetFramework>netcoreapp3.1</TargetFramework>
     </PropertyGroup>
 
-
-
     <ItemGroup>
-      <ProjectReference Include="..\HashedWheelTimer\HashedWheelTimer.csproj" />
+      <ProjectReference Include="..\HWT\HWT.csproj" />
     </ItemGroup>
 
 </Project>

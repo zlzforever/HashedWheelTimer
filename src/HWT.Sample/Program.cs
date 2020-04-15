@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Threading.Tasks;
-using HashedWheelTimer;
+using System.Timers;
+using HWT;
 
-namespace HashedWheelTimerSample
+namespace HWT.Sample
 {
     /// <summary>
     /// Task fired repeatedly
@@ -11,9 +12,9 @@ namespace HashedWheelTimerSample
     {
         public Task RunAsync(ITimeout timeout)
         {
-            Console.WriteLine($"IntervalTimerTask is fired at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
-            timeout.Timer.NewTimeout(this, TimeSpan.FromSeconds(2));
-            return Task.CompletedTask;
+            // Console.WriteLine($"IntervalTimerTask is fired at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
+            timeout.Timer.NewTimeout(this, TimeSpan.FromSeconds(5));
+            return Task.FromResult(0);
         }
     }
 
@@ -32,7 +33,7 @@ namespace HashedWheelTimerSample
         public Task RunAsync(ITimeout timeout)
         {
             Console.WriteLine($"{_userData} is fired at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
-            return Task.CompletedTask;
+            return Task.FromResult(0);
         }
     }
 
@@ -42,9 +43,7 @@ namespace HashedWheelTimerSample
         {
             Console.WriteLine($"{DateTime.UtcNow.Ticks / 10000000L} : Started");
 
-            HashedWheelTimer.HashedWheelTimer timer = new HashedWheelTimer.HashedWheelTimer(TimeSpan.FromMilliseconds(100)
-                , 100000
-                , 0);
+            HWT.HashedWheelTimer timer = new HWT.HashedWheelTimer();
 
             timer.NewTimeout(new OneTimeTask("A"), TimeSpan.FromSeconds(5));
             timer.NewTimeout(new OneTimeTask("B"), TimeSpan.FromSeconds(4));
@@ -53,9 +52,6 @@ namespace HashedWheelTimerSample
             timer.NewTimeout(new OneTimeTask("E"), TimeSpan.FromSeconds(1));
 
             timeout.Cancel();
-
-            timer.NewTimeout(new IntervalTimerTask(), TimeSpan.FromSeconds(5));
-
 
             System.Threading.Thread.Sleep(7000);
 

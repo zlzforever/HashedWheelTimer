@@ -2,7 +2,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace HashedWheelTimer
+namespace HWT
 {
     internal sealed class HashedWheelTimeout : ITimeout
     {

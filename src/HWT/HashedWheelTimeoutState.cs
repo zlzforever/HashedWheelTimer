@@ -1,4 +1,4 @@
-namespace HashedWheelTimer
+namespace HWT
 {
     public static class HashedWheelTimeoutState
     {

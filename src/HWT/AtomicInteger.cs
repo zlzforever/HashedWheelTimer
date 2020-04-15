@@ -1,6 +1,6 @@
 using System.Threading;
 
-namespace HashedWheelTimer
+namespace HWT
 {
     public class AtomicInteger
     {
