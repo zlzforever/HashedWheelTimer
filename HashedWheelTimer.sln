@@ -11,6 +11,7 @@ ProjectSection(SolutionItems) = preProject
 	LICENSE.txt = LICENSE.txt
 	.gitignore = .gitignore
 	package.props = package.props
+	README.md = README.md
 EndProjectSection
 EndProject
 Global
