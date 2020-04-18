@@ -6,7 +6,7 @@ namespace HWT
 {
     internal sealed class HashedWheelTimeout : ITimeout
     {
-        private volatile int _state = HashedWheelTimeoutState.Init;
+        private volatile int _state;
         private readonly HashedWheelTimer _timer;
 
         public int State => _state;
@@ -25,6 +25,7 @@ namespace HWT
             _timer = timer;
             TimerTask = timerTask;
             Deadline = deadline;
+            Interlocked.Exchange(ref _state, HashedWheelTimeoutState.Init);
         }
 
         // This will be used to chain timeouts in HashedWheelTimerBucket via a double-linked-list.
