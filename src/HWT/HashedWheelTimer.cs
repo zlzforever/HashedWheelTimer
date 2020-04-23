@@ -83,7 +83,7 @@ namespace HWT
 
             if (tickDuration < 1)
             {
-                logger.LogWarning("Configured tickDuration {0} smaller then {1}, using 1ms.",
+                _logger.LogWarning("Configured tickDuration {0} smaller then {1}, using 1ms.",
                     tickDuration, 1);
                 _tickDuration = 1;
             }
@@ -96,7 +96,7 @@ namespace HWT
 
             if (_instanceCounter.IncrementAndGet() > _instanceCountLimit)
             {
-                var name = typeof(HashedWheelTimer).Name;
+                var name = nameof(HashedWheelTimer);
                 _logger.LogError("You are creating too many " + name + " instances. " +
                                  name + " is a shared resource that must be reused across the JVM," +
                                  "so that only a few instances are created.");
