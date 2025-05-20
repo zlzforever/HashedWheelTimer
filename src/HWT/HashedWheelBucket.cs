@@ -1,148 +1,155 @@
 using System;
 using System.Collections.Generic;
 
-namespace HWT
+namespace HWT;
+
+/// <summary>
+/// Bucket that stores HashedWheelTimeouts. These are stored in a linked-list like datastructure to allow easy
+/// removal of HashedWheelTimeouts in the middle. Also the HashedWheelTimeout act as nodes themself and so no
+/// extra object creation is needed.
+/// </summary>
+public sealed class HashedWheelBucket
 {
-    internal sealed class HashedWheelBucket
+    // Used for the linked-list datastructure
+    private HashedWheelTimeout _head;
+    private HashedWheelTimeout _tail;
+
+    /// <summary>
+    /// Add HashedWheelTimeout to this bucket.
+    /// </summary>
+    /// <param name="timeout"></param>
+    public void AddTimeout(HashedWheelTimeout timeout)
     {
-        // Used for the linked-list datastructure
-        private HashedWheelTimeout _head;
-        private HashedWheelTimeout _tail;
-
-        public void AddTimeout(HashedWheelTimeout timeout)
+        timeout.Bucket = this;
+        if (_head == null)
         {
-            timeout.Bucket = this;
-            if (_head == null)
-            {
-                _head = _tail = timeout;
-            }
-            else
-            {
-                _tail.Next = timeout;
-                timeout.Prev = _tail;
-                _tail = timeout;
-            }
+            _head = _tail = timeout;
         }
-
-        public void ExpireTimeouts(long deadline)
+        else
         {
-            var timeout = _head;
-
-            // process all timeouts
-            while (timeout != null)
-            {
-                var next = timeout.Next;
-                if (timeout.RemainingRounds <= 0)
-                {
-                    next = Remove(timeout);
-                    if (timeout.Deadline <= deadline)
-                    {
-                        timeout.Expire();
-                    }
-                    else
-                    {
-                        // The timeout was placed into a wrong slot. This should never happen.
-                        throw new InvalidOperationException(
-                            $"timeout.deadline ({timeout.Deadline}) > deadline ({deadline})");
-                    }
-                }
-                else if (timeout.Cancelled)
-                {
-                    next = Remove(timeout);
-                }
-                else
-                {
-                    timeout.RemainingRounds--;
-                }
-
-                timeout = next;
-            }
+            _tail.Next = timeout;
+            timeout.Prev = _tail;
+            _tail = timeout;
         }
+    }
 
-        public HashedWheelTimeout Remove(HashedWheelTimeout timeout)
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="deadline">Tick</param>
+    /// <exception cref="InvalidOperationException"></exception>
+    public void ExpireTimeouts(long deadline)
+    {
+        var timeout = _head;
+
+        // process all timeouts
+        while (timeout != null)
         {
             var next = timeout.Next;
-            // remove timeout that was either processed or cancelled by updating the linked-list
-            if (timeout.Prev != null)
+            if (timeout.RemainingRounds <= 0)
             {
-                timeout.Prev.Next = next;
-            }
-
-            if (timeout.Next != null)
-            {
-                timeout.Next.Prev = timeout.Prev;
-            }
-
-            if (timeout == _head)
-            {
-                // if timeout is also the tail we need to adjust the entry too
-                if (timeout == _tail)
+                if (timeout.Deadline <= deadline)
                 {
-                    _tail = null;
-                    _head = null;
+                    timeout.Expire();
                 }
                 else
                 {
-                    _head = next;
+                    // The timeout was placed into a wrong slot. This should never happen.
+                    throw new InvalidOperationException(
+                        $"timeout.deadline ({timeout.Deadline}) > deadline ({deadline})");
                 }
             }
-            else if (timeout == _tail)
+            else if (!timeout.Cancelled)
             {
-                // if the timeout is the tail modify the tail to be the prev node.
-                _tail = timeout.Prev;
+                timeout.RemainingRounds--;
             }
 
-            // null out prev, next and bucket to allow for GC.
-            timeout.Prev = null;
-            timeout.Next = null;
-            timeout.Bucket = null;
-            timeout.DecrementPendingTimeouts();
-            return next;
+            timeout = next;
+        }
+    }
+
+    public HashedWheelTimeout Remove(HashedWheelTimeout timeout)
+    {
+        var next = timeout.Next;
+        // remove timeout that was either processed or cancelled by updating the linked-list
+        if (timeout.Prev != null)
+        {
+            timeout.Prev.Next = next;
         }
 
-        public void ClearTimeouts(ISet<ITimeout> set)
+        if (timeout.Next != null)
         {
-            for (;;)
-            {
-                var timeout = PollTimeout();
-                if (timeout == null)
-                {
-                    return;
-                }
-
-                if (timeout.Expired || timeout.Cancelled)
-                {
-                    continue;
-                }
-
-                set.Add(timeout);
-            }
+            timeout.Next.Prev = timeout.Prev;
         }
 
-        private HashedWheelTimeout PollTimeout()
+        if (timeout == _head)
         {
-            var head = _head;
-            if (head == null)
+            // if timeout is also the tail we need to adjust the entry too
+            if (timeout == _tail)
             {
-                return null;
-            }
-
-            var next = head.Next;
-            if (next == null)
-            {
-                _tail = _head = null;
+                _tail = null;
+                _head = null;
             }
             else
             {
                 _head = next;
-                next.Prev = null;
+            }
+        }
+        else if (timeout == _tail)
+        {
+            // if the timeout is the tail modify the tail to be the prev node.
+            _tail = timeout.Prev;
+        }
+
+        // null out prev, next and bucket to allow for GC.
+        timeout.Prev = null;
+        timeout.Next = null;
+        timeout.Bucket = null;
+        return next;
+    }
+
+    public void ClearTimeouts(ISet<HashedWheelTimeout> set)
+    {
+        for (;;)
+        {
+            var timeout = PollTimeout();
+            if (timeout == null)
+            {
+                return;
             }
 
-            // null out prev and next to allow for GC.
-            head.Next = null;
-            head.Prev = null;
-            head.Bucket = null;
-            return head;
+            if (timeout.Expired || timeout.Cancelled)
+            {
+                continue;
+            }
+
+            set.Add(timeout);
         }
+    }
+
+    private HashedWheelTimeout PollTimeout()
+    {
+        var head = _head;
+        if (head == null)
+        {
+            return null;
+        }
+
+        var next = head.Next;
+        if (next == null)
+        {
+            _tail = _head = null;
+        }
+        else
+        {
+            _head = next;
+            next.Prev = null;
+        }
+
+        // null out prev and next to allow for GC.
+        head.Next = null;
+        head.Prev = null;
+        head.Bucket = null;
+        return head;
     }
 }

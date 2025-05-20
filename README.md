@@ -14,7 +14,7 @@ Could be used with .net framework, dotnet core.
 ## How to get?
 
 ```
-dotnet add package ZCJ.HashedWheelTimer --version 0.0.9
+dotnet add package HashedWheelTimer.NET --version 0.10.3
 ```
 
 ## How to use?

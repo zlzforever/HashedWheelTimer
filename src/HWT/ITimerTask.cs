@@ -1,16 +1,19 @@
 using System.Threading.Tasks;
 
-namespace HWT
+namespace HWT;
+
+/// <summary>
+/// A task which is executed after the delay specified with Timer.NewTimeout(TimerTask, long, TimeUnit).
+/// </summary>
+public interface ITimerTask
 {
     /// <summary>
-    /// A task which is executed after the delay specified with Timer.NewTimeout(TimerTask, long, TimeUnit).
+    /// Executed after the delay specified with Timer.NewTimeout(TimerTask, long, TimeUnit)
     /// </summary>
-    public interface ITimerTask
+    /// <param name="timeout">timeout a handle which is associated with this task</param>
+    Task RunAsync(ITimeout timeout);
+
+    void Cancel(ITimeout _)
     {
-        /// <summary>
-        /// Executed after the delay specified with Timer.NewTimeout(TimerTask, long, TimeUnit)
-        /// </summary>
-        /// <param name="timeout">timeout a handle which is associated with this task</param>
-        Task RunAsync(ITimeout timeout);
     }
 }

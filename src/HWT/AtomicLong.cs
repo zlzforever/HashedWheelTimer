@@ -1,21 +1,20 @@
 using System.Threading;
 
-namespace HWT
+namespace HWT;
+
+public class AtomicLong
 {
-    public class AtomicLong
+    private long _value;
+
+    public long IncrementAndGet()
     {
-        private long _value;
-
-        public long IncrementAndGet()
-        {
-            return Interlocked.Increment(ref _value);
-        }
-
-        public long DecrementAndGet()
-        {
-            return Interlocked.Decrement(ref _value);
-        }
-
-        public long Value => Interlocked.Read(ref _value);
+        return Interlocked.Increment(ref _value);
     }
+
+    public long DecrementAndGet()
+    {
+        return Interlocked.Decrement(ref _value);
+    }
+
+    public long Value => Interlocked.Read(ref _value);
 }

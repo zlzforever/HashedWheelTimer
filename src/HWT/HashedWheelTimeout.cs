@@ -1,131 +1,184 @@
+using System;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
-namespace HWT
+namespace HWT;
+
+/// <summary>
+/// A handle associated with a TimerTask that is returned by a HashedWheelTimer
+/// </summary>
+public sealed class HashedWheelTimeout : ITimeout
 {
-    internal sealed class HashedWheelTimeout : ITimeout
+    private const int StInit = 0;
+    public const int StCancelled = 1;
+    private const int StExpired = 2;
+    private volatile int _state;
+
+    public int State => _state;
+
+    /// <summary>
+    /// Tick
+    /// </summary>
+    public long Deadline { get; }
+
+    /// <summary>
+    /// remainingRounds will be calculated and set by Worker.transferTimeoutsToBuckets() before the
+    /// HashedWheelTimeout will be added to the correct HashedWheelBucket.
+    /// </summary>
+    public long RemainingRounds { get; set; }
+
+    // This will be used to chain timeouts in HashedWheelTimerBucket via a double-linked-list.
+    // As only the workerThread will act on it there is no need for synchronization / volatile.
+    public HashedWheelTimeout Next { get; set; }
+    public HashedWheelTimeout Prev { get; set; }
+
+    /// <summary>
+    /// The bucket to which the timeout was added
+    /// </summary>
+    public HashedWheelBucket Bucket { get; set; }
+
+    /// <summary>
+    /// Returns the Timer that created this handle.
+    /// </summary>
+    public HashedWheelTimer Timer { get; }
+
+    /// <summary>
+    /// Returns the TimerTask which is associated with this handle.
+    /// </summary>
+    public ITimerTask TimerTask { get; }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="timer"></param>
+    /// <param name="timerTask"></param>
+    /// <param name="deadline">Tick</param>
+    public HashedWheelTimeout(HashedWheelTimer timer, ITimerTask timerTask, long deadline)
     {
-        private volatile int _state;
-        private readonly HashedWheelTimer _timer;
+        Timer = timer;
+        TimerTask = timerTask;
+        Deadline = deadline;
+        Interlocked.Exchange(ref _state, StInit);
+    }
 
-        public int State => _state;
+    /// <summary>
+    /// Returns true if and only if the TimerTask associated
+    /// with this handle has been expired
+    /// </summary>
+    public bool Expired => _state == StExpired;
 
-        public long Deadline { get; private set; }
+    /// <summary>
+    /// Returns true if and only if the TimerTask associated
+    /// with this handle has been cancelled
+    /// </summary>
+    public bool Cancelled => _state == StCancelled;
 
-        // remainingRounds will be calculated and set by Worker.transferTimeoutsToBuckets() before the
-        // HashedWheelTimeout will be added to the correct HashedWheelBucket.
-        public long RemainingRounds { get; set; }
 
-        // The bucket to which the timeout was added
-        public HashedWheelBucket Bucket { get; set; }
-
-        public HashedWheelTimeout(HashedWheelTimer timer, ITimerTask timerTask, long deadline)
+    /// <summary>
+    /// Attempts to cancel the {@link TimerTask} associated with this handle.
+    /// If the task has been executed or cancelled already, it will return with no side effect.
+    /// </summary>
+    /// <returns>True if the cancellation completed successfully, otherwise false</returns>
+    public bool Cancel()
+    {
+        // only update the state it will be removed from HashedWheelBucket on next tick.
+        if (!CompareAndSetState(StInit, StCancelled))
         {
-            _timer = timer;
-            TimerTask = timerTask;
-            Deadline = deadline;
-            Interlocked.Exchange(ref _state, HashedWheelTimeoutState.Init);
+            return false;
         }
 
-        // This will be used to chain timeouts in HashedWheelTimerBucket via a double-linked-list.
-        // As only the workerThread will act on it there is no need for synchronization / volatile.
-        public HashedWheelTimeout Next { get; set; }
-        public HashedWheelTimeout Prev { get; set; }
+        // If a task should be canceled we put this to another queue which will be processed on each tick.
+        // So this means that we will have a GC latency of max. 1 tick duration which is good enough. This way
+        // we can make again use of our MpscLinkedQueue and so minimize the locking / overhead as much as possible.
+        Timer.EnqueueCanceledTimeout(this);
+        return true;
+    }
 
-        public ITimer Timer => _timer;
-
-        public ITimerTask TimerTask { get; private set; }
-
-        public bool Expired => _state == HashedWheelTimeoutState.Expired;
-
-        public bool Cancelled => _state == HashedWheelTimeoutState.Cancelled;
-
-        public void DecrementPendingTimeouts()
+    private void Remove()
+    {
+        if (Bucket != null)
         {
-            _timer.DecrementPendingTimeouts();
+            Bucket.Remove(this);
         }
 
-        public bool Cancel()
-        {
-            // only update the state it will be removed from HashedWheelBucket on next tick.
-            if (!CompareAndSetState(HashedWheelTimeoutState.Init, HashedWheelTimeoutState.Cancelled))
-            {
-                return false;
-            }
+        Timer.DecrementPendingTimeouts();
+    }
 
-            // If a task should be canceled we put this to another queue which will be processed on each tick.
-            // So this means that we will have a GC latency of max. 1 tick duration which is good enough. This way
-            // we can make again use of our MpscLinkedQueue and so minimize the locking / overhead as much as possible.
-            _timer.EnqueueCanceledTimeout(this);
-            return true;
+    public void RemoveAfterCancellation()
+    {
+        Remove();
+        TimerTask.Cancel(this);
+    }
+
+    public void Expire()
+    {
+        if (!CompareAndSetState(StInit, StExpired))
+        {
+            return;
         }
 
-        public void Remove()
+        try
         {
-            if (Bucket != null)
+            Remove();
+            Timer.TaskFactory.StartNew(async obj =>
             {
-                Bucket.Remove(this);
-            }
-            else
-            {
-                _timer.DecrementPendingTimeouts();
-            }
-        }
-
-        public void Expire()
-        {
-            if (!CompareAndSetState(HashedWheelTimeoutState.Init, HashedWheelTimeoutState.Expired))
-            {
-                return;
-            }
-
-            Task.Factory.StartNew(async timeout =>
-            {
-                //
-                await TimerTask.RunAsync((ITimeout) timeout);
+                var timeout = (HashedWheelTimeout)obj;
+                try
+                {
+                    await TimerTask.RunAsync(timeout);
+                }
+                catch (Exception e)
+                {
+                    Timer.Logger.LogError(e, "An exception was thrown by {TimerTask}", TimerTask.GetType().Name);
+                }
             }, this).ConfigureAwait(false);
         }
-
-        public override string ToString()
+        catch (Exception e)
         {
-            long currentTime = DateTimeHelper.TotalMilliseconds;
-            long remaining = Deadline - currentTime + _timer.StartTime;
+            Timer.Logger.LogError(e, "Error while executing timer task");
+        }
+    }
 
-            var buf = new StringBuilder(192)
-                .Append(GetType().Name)
-                .Append('(')
-                .Append("deadline: ");
-            if (remaining > 0)
-            {
-                buf.Append(remaining)
-                    .Append(" ms later");
-            }
-            else if (remaining < 0)
-            {
-                buf.Append(-remaining)
-                    .Append(" ms ago");
-            }
-            else
-            {
-                buf.Append("now");
-            }
+    public override string ToString()
+    {
+        var currentTime = DateTimeHelper.TotalMilliseconds;
+        var remaining = Deadline - currentTime + Timer.StartTime;
 
-            if (Cancelled)
-            {
-                buf.Append(", cancelled");
-            }
-
-            return buf.Append(", task: ")
-                .Append(TimerTask)
-                .Append(')')
-                .ToString();
+        var buf = new StringBuilder(192)
+            .Append(GetType().Name)
+            .Append('(')
+            .Append("deadline: ");
+        if (remaining > 0)
+        {
+            buf.Append(remaining)
+                .Append(" ms later");
+        }
+        else if (remaining < 0)
+        {
+            buf.Append(-remaining)
+                .Append(" ms ago");
+        }
+        else
+        {
+            buf.Append("now");
         }
 
-        private bool CompareAndSetState(int expected, int state)
+        if (Cancelled)
         {
-            var originalState = Interlocked.CompareExchange(ref _state, state, expected);
-            return originalState == expected;
+            buf.Append(", cancelled");
         }
+
+        return buf.Append(", task: ")
+            .Append(TimerTask)
+            .Append(')')
+            .ToString();
+    }
+
+    private bool CompareAndSetState(int expected, int state)
+    {
+        var originalState = Interlocked.CompareExchange(ref _state,
+            state, expected);
+        return originalState == expected;
     }
 }

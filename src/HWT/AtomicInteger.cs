@@ -1,19 +1,18 @@
 using System.Threading;
 
-namespace HWT
+namespace HWT;
+
+public class AtomicInteger
 {
-    public class AtomicInteger
+    private int _value;
+
+    public int IncrementAndGet()
     {
-        private int _value;
+        return Interlocked.Increment(ref _value);
+    }
 
-        public int IncrementAndGet()
-        {
-            return Interlocked.Increment(ref _value);
-        }
-
-        public int DecrementAndGet()
-        {
-            return Interlocked.Decrement(ref _value);
-        }
+    public int DecrementAndGet()
+    {
+        return Interlocked.Decrement(ref _value);
     }
 }
