@@ -13,7 +13,5 @@ public interface ITimerTask
     /// <param name="timeout">timeout a handle which is associated with this task</param>
     Task RunAsync(ITimeout timeout);
 
-    void Cancel(ITimeout _)
-    {
-    }
+    void Cancel(ITimeout _);
 }

@@ -255,18 +255,11 @@ public class TestCases
         timer.Stop();
     }
 
-    class CountdownEventTask : ITimerTask
+    class CountdownEventTask(CountdownEvent @event) : TimerTask
     {
-        private readonly CountdownEvent _event;
-
-        public CountdownEventTask(CountdownEvent @event)
+        public override Task RunAsync(ITimeout timeout)
         {
-            _event = @event;
-        }
-
-        public Task RunAsync(ITimeout timeout)
-        {
-            _event.Signal();
+            @event.Signal();
             return Task.CompletedTask;
         }
     }
@@ -281,19 +274,12 @@ public class TestCases
         return new ActionTimerTask(_ => { latch.Signal(); });
     }
 
-    class TimerTask2 : ITimerTask
+    class TimerTask2(Action action) : TimerTask
     {
-        private Action _action;
-
-        public TimerTask2(Action action)
-        {
-            _action = action;
-        }
-
-        public Task RunAsync(ITimeout timeout)
+        public override Task RunAsync(ITimeout timeout)
         {
             timeout.Timer.NewTimeout(this, TimeSpan.FromMilliseconds(100));
-            _action();
+            action();
             return Task.CompletedTask;
         }
     }

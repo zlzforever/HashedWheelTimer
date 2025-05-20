@@ -17,9 +17,9 @@ public class HashedWheelTimer : IDisposable
     private readonly Worker _worker;
     // private Task _workerThread;
 
-    public const long WorkerStateInit = 0L;
-    public const long WorkerStateStarted = 1L;
-    public const long WorkerStateShutdown = 2L;
+    private const long WorkerStateInit = 0L;
+    private const long WorkerStateStarted = 1L;
+    private const long WorkerStateShutdown = 2L;
     private long _workerState; // 0 - init, 1 - started, 2 - shut down
 
     private readonly long _tickDuration;
@@ -31,19 +31,14 @@ public class HashedWheelTimer : IDisposable
     private readonly AtomicLong _pendingTimeouts = new();
     private readonly long _maxPendingTimeouts;
     private readonly TaskFactory _taskFactory;
-    // private CancellationTokenSource _cancellationTokenSource;
 
     public ILogger Logger => _logger;
 
     public long StartTime { get; private set; }
 
-    // private int _workerStarted;
-
-
     public long PendingTimeouts => _pendingTimeouts.Value;
 
     public TaskFactory TaskFactory => _taskFactory;
-
 
     internal void EnqueueCanceledTimeout(HashedWheelTimeout timeout)
     {
@@ -237,7 +232,7 @@ public class HashedWheelTimer : IDisposable
         }
 
         var unprocessed = _worker.UnprocessedTimeouts;
-        ICollection<HashedWheelTimeout> cancelled = new HashSet<HashedWheelTimeout>(unprocessed.Count);
+        ICollection<HashedWheelTimeout> cancelled = new HashSet<HashedWheelTimeout>();
         foreach (var timeout in unprocessed)
         {
             if (timeout.Cancel())

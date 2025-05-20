@@ -3,9 +3,9 @@ using System.Threading.Tasks;
 
 namespace HWT;
 
-public class ActionTimerTask(Action<ITimeout> action) : ITimerTask
+public class ActionTimerTask(Action<ITimeout> action) : TimerTask
 {
-    public Task RunAsync(ITimeout timeout)
+    public override Task RunAsync(ITimeout timeout)
     {
         action(timeout);
         return Task.CompletedTask;
