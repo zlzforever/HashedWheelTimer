@@ -1,9 +1,13 @@
 # HashedWheelTimer
+
 Hashed Wheel Timer implementation based C#
+
+[![.NET](https://github.com/zlzforever/HashedWheelTimer/actions/workflows/dotnet.yml/badge.svg?branch=master)](https://github.com/zlzforever/HashedWheelTimer/actions/workflows/dotnet.yml)
 
 ## What is it?
 
-Hashed Wheel Timer is an approximate timer with configurable accuracy, which could be used for very efficient single-threaded execution of scheduled tasks. 
+Hashed Wheel Timer is an approximate timer with configurable accuracy, which could be used for very efficient
+single-threaded execution of scheduled tasks.
 
 This implementation assumes single-writer principle and timers firing on processing thread.
 
